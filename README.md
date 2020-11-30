@@ -1,5 +1,8 @@
 # ngserve
 
+[![Tests Status](https://github.com/fullpipe/ngserve/workflows/Tests/badge.svg)](https://github.com/fullpipe/ngserve)
+[![Docker Image](https://img.shields.io/docker/image-size/fullpipe/ngserve/latest)](https://cloud.docker.com/repository/docker/fullpipe/ngserve)
+
 Simple and easy to use http server for angular 2+ apps.
 
 ## Usage
