@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -33,7 +32,6 @@ func main() {
 	noCache := getEnvAsBool("NO_CACHE", false)
 
 	var handler http.Handler
-	fmt.Println(port, appRoot, webRoot, noCache)
 	if noCache {
 		fs := http.Dir(webRoot)
 		handler = http.FileServer(fs)
@@ -106,7 +104,6 @@ func httpCache(h http.Handler) http.Handler {
 
 func getEnvAsBool(name string, defaultVal bool) bool {
 	raw := os.Getenv(name)
-	fmt.Println(raw)
 	if raw == "" {
 		return defaultVal
 	}
