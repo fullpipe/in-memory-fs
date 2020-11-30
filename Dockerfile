@@ -21,6 +21,8 @@ COPY --from=builder /build/ngserve /
 
 ENV PORT=8080 \
     APP_ROOT=/
+    WEB_ROOT=./app
+    NO_CACHE=false
 
 EXPOSE 8080
 VOLUME [ "/app" ]

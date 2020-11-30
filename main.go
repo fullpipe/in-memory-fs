@@ -24,12 +24,26 @@ func main() {
 		appRoot = "/"
 	}
 
-	fs, terminate := fscache.NewFSCache(http.Dir("./app"))
-	defer terminate()
+	webRoot := os.Getenv("WEB_ROOT")
+	if webRoot == "" {
+		webRoot = "./app"
+	}
 
-	handler := http.FileServer(fs)
+	noCache := getEnvAsBool("NO_CACHE", false)
+
+	var handler http.Handler
+	if noCache {
+		fs := http.Dir(webRoot)
+		handler = http.FileServer(fs)
+	} else {
+		fs, terminate := fscache.NewFSCache(http.Dir(webRoot))
+		defer terminate()
+
+		handler = http.FileServer(fs)
+		handler = httpCache(handler)
+	}
+
 	handler = gziphandler.GzipHandler(handler)
-	handler = httpCache(handler)
 	handler = indexFile(handler)
 	handler = onlyGetRequests(handler)
 	handler = http.StripPrefix(appRoot, handler)
@@ -86,4 +100,18 @@ func httpCache(h http.Handler) http.Handler {
 
 		h.ServeHTTP(w, r)
 	})
+}
+
+func getEnvAsBool(name string, defaultVal bool) bool {
+	raw := os.Getenv(name)
+	if raw == "" {
+		return defaultVal
+	}
+
+	val, err := strconv.ParseBool(raw)
+	if err == nil {
+		return defaultVal
+	}
+
+	return val
 }
