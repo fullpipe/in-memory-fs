@@ -6,7 +6,7 @@ Simple and easy to use http server for angular 2+ apps.
 
 Add `Dockerfile` to the root of your angular app project.
 
-```
+```Dockerfile
 # Build
 FROM node:lts-alpine AS build
 
@@ -25,7 +25,10 @@ FROM fullpipe/ngserve:latest
 COPY --from=build /app/dist/example/ /app/
 ```
 
-or if you build on your own
+First stage will build your app. Second will copy `dist` to `ngserve` web root
+directory.
+
+Or if you build on your own
 
 ```Dockerfile
 FROM fullpipe/ngserve:latest
@@ -34,12 +37,9 @@ FROM fullpipe/ngserve:latest
 COPY dist/example/ /app/
 ```
 
-First stage will build your app. Second will copy `dist` to `ngserve` web root
-directory.
-
 Now you can build and run you app
 
-```Dockerfile
+```bash
 docker build -t example .
 docker run -p 8080:8080 example
 ```
@@ -48,7 +48,7 @@ docker run -p 8080:8080 example
 
 See and try [example](https://github.com/fullpipe/ngserve/tree/main/example).
 
-```
+```bash
 cd example
 npm i
 npm run build
