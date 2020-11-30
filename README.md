@@ -47,6 +47,14 @@ docker build -t example .
 docker run -p 8080:8080 example
 ```
 
+## Env vars
+
+- APP_ROOT, root path for your app. Default `/`. If you want for example
+  `/user/`. Set `APP_ROOT=/user/` and do not forget to change `deployUrl` in
+  `angular.json` to `/user`
+
+- NO_CACHE, disables in memory file cache. Default `false`
+
 ## Example
 
 See and try [example](https://github.com/fullpipe/ngserve/tree/main/example).
