@@ -27,7 +27,7 @@ COPY --from=build /app/dist/example/ /app/
 
 or if you build on your own
 
-```
+```Dockerfile
 FROM fullpipe/ngserve:latest
 
 # Do not forget to add end-slashes to copy dir content
@@ -39,7 +39,7 @@ directory.
 
 Now you can build and run you app
 
-```
+```Dockerfile
 docker build -t example .
 docker run -p 8080:8080 example
 ```
