@@ -65,4 +65,4 @@ It will create three different endpoints:
 
 - benchmarks against nginx. Service uses in memory file cache. So it could be a
   little bit faster then default nginx
-
+- logs?
