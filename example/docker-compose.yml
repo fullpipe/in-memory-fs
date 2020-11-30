@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  app-build-and-cache:
+    build: .
+    ports:
+      - 8080:8080
+  app-cache-for-dev:
+    build: .
+    ports:
+      - 8081:8080
+    volumes:
+      - ./dist/example:/app
+  app-nocache-for-dev:
+    image: fullpipe/ngserve:latest
+    ports:
+      - 8082:8080
+    volumes:
+      - ./dist/example:/app
+    environment:
+      NO_CACHE: "true"
+
