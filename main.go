@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -13,8 +12,6 @@ import (
 	"github.com/NYTimes/gziphandler"
 	"github.com/fullpipe/memfs/pkg/fscache"
 )
-
-var etagSeed int = rand.Int()
 
 func main() {
 	port := os.Getenv("PORT")
@@ -32,8 +29,8 @@ func main() {
 
 	handler := http.FileServer(fs)
 	handler = gziphandler.GzipHandler(handler)
-	handler = indexFile(handler)
 	handler = httpCache(handler)
+	handler = indexFile(handler)
 	handler = onlyGetRequests(handler)
 	handler = http.StripPrefix(appRoot, handler)
 
@@ -72,9 +69,11 @@ func indexFile(h http.Handler) http.Handler {
 }
 
 func httpCache(h http.Handler) http.Handler {
+	etagSeed := strconv.FormatInt(time.Now().Unix(), 10)
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		key := r.URL.Path
-		e := `"` + key + "-" + strconv.Itoa(etagSeed) + `"`
+		e := `"` + key + "-" + etagSeed + `"`
 		w.Header().Set("Etag", e)
 		w.Header().Set("Cache-Control", "max-age=2592000") // 30 days
 
