@@ -74,7 +74,5 @@ It will create three different endpoints:
 
 ## TODO:
 
-- cache gziped content for performance
-- benchmarks against nginx. Service uses in memory file cache. So it could be a
-  little bit faster then default nginx
+- benchmarks against nginx
 - logs?
