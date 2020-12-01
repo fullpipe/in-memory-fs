@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -11,6 +12,8 @@ import (
 
 	"github.com/NYTimes/gziphandler"
 	"github.com/fullpipe/memfs/pkg/fscache"
+	cache "github.com/victorspringer/http-cache"
+	"github.com/victorspringer/http-cache/adapter/memory"
 )
 
 func main() {
@@ -37,6 +40,7 @@ func main() {
 		handler = http.FileServer(fs)
 	} else {
 		fs, terminate := fscache.NewFSCache(http.Dir(webRoot))
+		fs.SetTtl(60 * 60 * 24)
 		defer terminate()
 
 		handler = http.FileServer(fs)
@@ -46,6 +50,9 @@ func main() {
 	handler = gziphandler.GzipHandler(handler)
 	handler = indexFile(handler)
 	handler = onlyGetRequests(handler)
+	if !noCache {
+		handler = responceCache(handler)
+	}
 	handler = http.StripPrefix(appRoot, handler)
 
 	srv := &http.Server{
@@ -82,6 +89,28 @@ func indexFile(h http.Handler) http.Handler {
 	})
 }
 
+func responceCache(h http.Handler) http.Handler {
+	memcached, err := memory.NewAdapter(
+		memory.AdapterWithAlgorithm(memory.LRU),
+		memory.AdapterWithCapacity(10000000),
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	cacheClient, err := cache.NewClient(
+		cache.ClientWithAdapter(memcached),
+		cache.ClientWithTTL(10*time.Minute),
+		cache.ClientWithRefreshKey("opn"),
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	return cacheClient.Middleware(h)
+}
 func httpCache(h http.Handler) http.Handler {
 	etagSeed := strconv.FormatInt(time.Now().Unix(), 10)
 
