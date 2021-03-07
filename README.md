@@ -54,6 +54,7 @@ docker run -p 8080:8080 example
   `angular.json` to `/user`
 
 - NO_CACHE, disables in memory file cache. Default `false`
+- PORT, default 8080. Do not forget to `EXPOSE 123`, if changed
 
 ## Example
 
