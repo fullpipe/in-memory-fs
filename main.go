@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,8 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/NYTimes/gziphandler"
-	"github.com/fullpipe/memfs/pkg/fscache"
+	"github.com/valyala/fasthttp"
 	cache "github.com/victorspringer/http-cache"
 	"github.com/victorspringer/http-cache/adapter/memory"
 )
@@ -23,8 +23,9 @@ func main() {
 	}
 
 	appRoot := os.Getenv("APP_ROOT")
-	if appRoot == "" {
-		appRoot = "/"
+	var pathRewrite fasthttp.PathRewriteFunc
+	if appRoot != "" && appRoot != "/" {
+		pathRewrite = NewPathTripPrefix(appRoot)
 	}
 
 	webRoot := os.Getenv("WEB_ROOT")
@@ -34,37 +35,95 @@ func main() {
 
 	noCache := getEnvAsBool("NO_CACHE", false)
 
-	var handler http.Handler
-	if noCache {
-		fs := http.Dir(webRoot)
-		handler = http.FileServer(fs)
-	} else {
-		fs, terminate := fscache.NewFSCache(http.Dir(webRoot))
-		fs.SetTtl(60 * 60 * 24)
-		defer terminate()
-
-		handler = http.FileServer(fs)
-		handler = httpCache(handler)
+	fs := &fasthttp.FS{
+		Root:               webRoot,
+		IndexNames:         []string{"index.html"},
+		GenerateIndexPages: false,
+		Compress:           true,
+		CompressBrotli:     true,
+		AcceptByteRange:    true,
+		CacheDuration:      60 * 60 * 24,
+		PathRewrite:        pathRewrite,
+		// PathNotFound: func(ctx *fasthttp.RequestCtx) {
+		// 	ctx.URI().SetPath("index.html")
+		// 	// requestHandler(ctx)
+		// },
 	}
 
-	handler = gziphandler.GzipHandler(handler)
-	handler = indexFile(handler)
-	handler = onlyGetRequests(handler)
-	if !noCache {
-		handler = responceCache(handler)
+	fsHandler := fs.NewRequestHandler()
+	etagSeed := strconv.FormatInt(time.Now().Unix(), 10)
+
+	requestHandler := func(ctx *fasthttp.RequestCtx) {
+		if string(ctx.Method()) != "GET" {
+			ctx.SetStatusCode(fasthttp.StatusMethodNotAllowed)
+			return
+		}
+
+		if !noCache {
+			key := ctx.Path()
+			etag := fmt.Sprintf("%s-%s", key, etagSeed)
+
+			ctx.Response.Header.Set("Etag", etag)
+			ctx.Response.Header.Set("Cache-Control", "max-age=2592000") // 30 days
+
+			match := string(ctx.Request.Header.Peek(fasthttp.HeaderIfNoneMatch))
+			if match != "" && strings.Contains(match, etag) {
+				ctx.SetStatusCode(fasthttp.StatusNotModified)
+				return
+			}
+		}
+
+		fsHandler(ctx)
 	}
-	handler = http.StripPrefix(appRoot, handler)
 
-	srv := &http.Server{
-		Addr:         ":" + port,
-		Handler:      handler,
-		ReadTimeout:  2 * time.Second,
-		WriteTimeout: 10 * time.Second,
+	if err := fasthttp.ListenAndServe(":8080", requestHandler); err != nil {
+		log.Fatalf("error in ListenAndServe: %s", err)
 	}
 
-	http.Handle("/", handler)
+	// var handler http.Handler
+	// if noCache {
+	// 	fs := http.Dir(webRoot)
+	// 	handler = http.FileServer(fs)
+	// } else {
+	// 	fs, terminate := fscache.NewFSCache(http.Dir(webRoot))
+	// 	fs.SetTtl(60 * 60 * 24)
+	// 	defer terminate()
 
-	log.Fatal(srv.ListenAndServe().Error())
+	// 	handler = http.FileServer(fs)
+	// 	handler = httpCache(handler)
+	// }
+
+	// handler = gziphandler.GzipHandler(handler)
+	// handler = indexFile(handler)
+	// handler = onlyGetRequests(handler)
+	// if !noCache {
+	// 	handler = responceCache(handler)
+	// }
+	// handler = http.StripPrefix(appRoot, handler)
+
+	// srv := &http.Server{
+	// 	Addr:         ":" + port,
+	// 	Handler:      handler,
+	// 	ReadTimeout:  2 * time.Second,
+	// 	WriteTimeout: 10 * time.Second,
+	// }
+
+	// http.Handle("/", handler)
+
+	// log.Fatal(srv.ListenAndServe().Error())
+}
+
+func NewPathTripPrefix(prefix string) fasthttp.PathRewriteFunc {
+	return func(ctx *fasthttp.RequestCtx) []byte {
+		path := ctx.Path()
+		newPath := bytes.TrimPrefix(path, []byte(prefix))
+
+		if len(newPath) < len(path) {
+			return newPath
+		}
+
+		return path
+	}
 }
 
 func onlyGetRequests(h http.Handler) http.Handler {
